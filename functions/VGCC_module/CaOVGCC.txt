@@ -1,0 +1,232 @@
+%%%%%%%%% Simulating on Spontaneous Ca Oscillations in Astrocytes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%% Authors: Shuai Zeng and Shangbin Chen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%% Last modified on Oct-27-2008 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% The small software is for spontaneous Ca oscillations in astrocytes.
+%% Just copy all the content here to the Matlab enviroment form one *.m (i.e. CaO.m).
+%% CaO can be runned without any other input. It will take about 1000 s to finish one trial of simulation.
+%% If there is any problem, please contact sbchen@mail.hust.edu.cn.
+
+
+%%%%%%%%%%%% Main Part%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function CaO
+
+clear all;                                 %%%%%%%%%%%%%%%%%%%%%%%% release memory for computing 
+tic                                        %%%%%%%%%%%%%%%%%%%%%%%% for record the computing time
+
+%%%%%%%%%%% Part one : declare variables and set parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+global V Eca  Cin Cout  deltaT  n JN JT JL JR gR gL gT gN F ftf fts Nd Rd Rf Ld Td Lf
+F=96485;      %% Faraday's constant, unit: coul/mole
+T=300;        %% Temperature, unit:Kelvin
+R=8.31;       %% ideal gas constant, unit: J/(mole*K)
+z=2;          %% valence of Ca ion
+Vast=5.233*1e-13; %% Volume of an astrocyte, unit: liter, a spherical soma of radius 5 um
+mSERCA=15;    %% maximal flux across SERCA, unit: uM/s
+mCICR=40;     %% maximal flux of calcium ions in the cytosol, unit: s-1
+mPLC=0.05;    %% maximal production rate of PLC, unit: uM/s
+n1=2.02;      %% Hill coefficient
+n2=2.2;       %% Hill coefficient 
+pSERCA=0.1;   %% half-saturation constant for SERCA activation, unit: uM/s
+pPCa=0.3;     %% half-saturation constant for calcium activation of PLC,unit: uM/s  
+pCaA=0.15;    %% activating affinitie,unit: uM
+pCaI=0.15;    %% inhibiting affinitie,unit: uM
+pIP3=0.1;     %% half-saturation constant for IP3 activation of IP3R, unit:0.1 uM
+Pdeg=0.08;    %% rate of IP3 degradation, unit:s-1
+Pout=0.5;     %% rate of efflux calcium from the cytosol into ECS, unit: s-1
+Pf=0.5;       %% rate of leak fluxt from ER into the cytosol, unit: s-1
+Taxis=800;   %% Total time of simulation (s) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+deltaT=0.01; %% Time step interval (s),i.e. 10 ms %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Conductances of 4 VGCCs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+gT=0.0600;   %% steady conductance of T type channel, unit: pS
+gL=3.5000;   %% steady conductance of L type channel, unit: pS
+gN=0.3900;   %% steady conductance of N type channel, unit: pS
+gR=0.2225;   %% steady conductance of R type channel, unit: pS
+Nl=1;        %%% open or block the L type channel,  1=open, 0=close 
+Nn=1;        %%% open or block the N type channel,  1=open, 0=close
+Nr=1;        %%% open or block the R type channel,  1=open, 0=close
+Nt=1;        %%% open or block the T type channel,  1=open, 0=close
+%%%%% Set the size of some variables with zeros %%%%%%%%%%%%%%%%%%%
+N=Taxis/deltaT;  %% Set the total time steps %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+temp=zeros(1,N); %%% a temp matix for preseting the variables with fixed size
+Cin=temp;        %%% Ca ion concentration in cytosol, unit : uM
+Cer=temp;        %%% Ca ion concentration in ER, unit : uM
+IP3=temp;        %%% IP3 concentration in cytosol, unit : uM
+Vin=temp;        %%% Total Ca flux via VGCCs, unit: uM
+Ld=temp;         %%% Ld is activation variable in L type channel
+Lf=temp;         %%% Lf is inactivation variable in L type channel
+Nd=temp;         %%% Nd is activation variable in N type channel
+Td=temp;         %%% Td is activation variable in N type channel
+Rd=temp;         %%% Rd is activation variable in R type channel
+Rf=temp;         %%% Rf is inactivation variable in R type channel
+ftf=temp;        %%% ftf is part-variable of inactivation in T type channel
+fts=temp;        %%% fts is part-variable of inactivation in T type channel
+JN=temp;         %%% JN is the Ca current via N type channel 
+JL=temp;         %%% JL is the Ca current via N type channel 
+JR=temp;         %%% JR is the Ca current via N type channel 
+JT=temp;         %%% JT is the Ca current via N type channel 
+Cout(1:N)=1500;  %% Ca concentration in ECS, unit: uM
+V(1:N)=-65;      %% membrane potential (mV), ranged from -75 to -60 mV %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%% Part two: Computing along time steps  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% initial values when n=1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Cin(1)=0.1;      %%% initial Ca ion concentration in cytosol, unit : uM
+Cer(1)=1.5;      %%% initial Ca ion concentration in ER, unit : uM
+IP3(1)=0.1;      %%% initial IP3 concentration in cytosol, unit : uM
+Vin(1)=0.00;     %%% initial Total Ca flux via VGCCs, unit: uM  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+for n=2:N    
+    n             %% for showing the progress of computing
+Cin(n)=Cin(n-1);  %% preseting the value from the previous time point
+Cer(n)=Cer(n-1);  %% preseting the value from the previous time point
+IP3(n)=IP3(n-1);  %% preseting the value from the previous time point  
+Eca(n)=59.5/2*log10(Cout(n)/Cin(n)); %%% Eca is Nernst Potential of Ca, 59.5=R*T/F*1000*ln10, unit as mV
+NRTC();           %% to get the Ca current via R type channel, JR  
+NLTC();           %% to get the Ca current via L type channel, JR 
+NNTC();           %% to get the Ca current via N type channel, JR 
+NTCC();           %% to get the Ca current via T type channel, JR 
+in(n)=(Nn*JN(n)+Nl*JL(n)+ Nr*JR(n)+Nt*JT(n));    %%% Total Ca current via VGCCs %%%%%%%%%%%%%%%%%%% 
+Vin(n)=-in(n)*1e4/(5.23)/(2*F);                 %%% Converting the current to the flux with unit as uM/s
+Vserca(n)=mSERCA*(Cin(n)*Cin(n)/(Cin(n)*Cin(n)+pSERCA*pSERCA)); %%%% the flux from cytosol to ER via ATPase pump with unit as uM/s
+VPLC(n)=mPLC*(Cin(n)*Cin(n)/(Cin(n)*Cin(n)+pPCa*pPCa));         %%%% production rate of IP3 with unit as uM/s        
+VCICR(n)=4*mCICR*(pCaA^n1)*(Cin(n)^n1)*(IP3(n)^n2)*(Cer(n)-Cin(n))/((Cin(n)^n1+pCaA^n1)*(Cin(n)^n1+pCaI^n1))/(IP3(n)^n2+pIP3^n2); %%%% IP3 mediated CICR flux from ER to cytosol with unit as uM/s
+XX=Cin(n);                                                      %% record the Ca concerntration in cytosol before iteration 
+ Cin(n)=deltaT*(Vin(n)-Pout*Cin(n)+VCICR(n)-Vserca(n)+Pf*(Cer(n)-Cin(n)))+Cin(n-1); %% concerntration of Ca in cytosol
+ Cer(n)=deltaT*(Vserca(n)-VCICR(n)-Pf*(Cer(n)-Cin(n)))+Cer(n-1);                    %% concerntration of Ca in ER
+ IP3(n)=deltaT*(VPLC(n)-Pdeg*IP3(n))+IP3(n-1);                                      %% concerntration of IP3 in cytosol
+while abs(XX-Cin(n))>0.2;              %%% condition for iteration, for avoiding sudden change
+     XX=Cin(n);      %% record the Ca concerntration in cytosol before next iteration
+Eca(n)=59.5/2*log10(Cout(n)/Cin(n)); %%% Eca is Nernst Potential of Ca
+NRTC();           %% to get the Ca current via R type channel, JR  
+NLTC();           %% to get the Ca current via L type channel, JR 
+NNTC();           %% to get the Ca current via N type channel, JR 
+NTCC();           %% to get the Ca current via T type channel, JR 
+in(n)=(Nn*JN(n)+Nl*JL(n)+ Nr*JR(n)+Nt*JT(n));%%% Total Ca current via VGCCs %%%%%%%%%%%%%%%%%%%¡£ 
+Vin(n)=-in(n)*1e4/(5.23)/(2*F);            %%% Converting the current to the flux with unit as uM/s
+ Vserca(n)=mSERCA*(Cin(n)*Cin(n)/(Cin(n)*Cin(n)+pSERCA*pSERCA));  %%%% the flux from cytosol to ER via ATPase pump with unit as uM/s
+ VPLC(n)=mPLC*(Cin(n)*Cin(n)/(Cin(n)*Cin(n)+pPCa*pPCa));          %%%% production rate of IP3 with unit as uM/s 
+ VCICR(n)=4*mCICR*(pCaA^n1)*(Cin(n)^n1)*(IP3(n)^n2)*(Cer(n)-Cin(n))/((Cin(n)^n1+pCaA^n1)*(Cin(n)^n1+pCaI^n1))/(IP3(n)^n2+pIP3^n2);  %%%% IP3 mediated CICR flux from ER to cytosol with unit as uM/s
+ Cin(n)=deltaT*(Vin(n)-Pout*Cin(n)+VCICR(n)-Vserca(n)+Pf*(Cer(n)-Cin(n)))+Cin(n-1);   %% concerntration of Ca in cytosol
+ Cer(n)=deltaT*(Vserca(n)-VCICR(n)-Pf*(Cer(n)-Cin(n)))+Cer(n-1);                      %% concerntration of Ca in ER
+ IP3(n)=deltaT*(VPLC(n)-Pdeg*IP3(n))+IP3(n-1);                                        %% concerntration of IP3 in cytosol
+ end
+ end
+toc               %%% show the computing time
+
+%%%%%%%%%%%%% Part 3: Showing results %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+figure      %% open a new figure
+plot(Cin)   %% show the results of Ca Oscillations in cytosol
+figure 
+plot(Cer)   %% show the results of Ca Oscillations in ER
+figure 
+plot(IP3)   %% show the results of Ca Oscillations in ER
+
+
+%%%%%%%%%%%% Different  VGCCs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% L-type %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function NLTC()   %%%%% L type channel, JL is the Ca current.
+global V deltaT Cin n Eca gL Ld JL Lf
+if n==2
+    Ld(1)=1/(1+exp(-(V(n)+50)/3));  
+end;
+Ld(n)=Ld(n-1);
+    und(n)=1/(1+exp(-(V(n)+50)/3)); 
+    taod(n)=18*exp(-((V(n)+45)/20)^2)+1.5;
+    Lf(n)=0.00045/(0.00045+Cin(n)/1000);
+    Ld(n)=(und(n)-Ld(n))*deltaT/taod(n)+Ld(n-1);  
+    dd=Ld(n);
+    Ld(n)=(und(n)-Ld(n))*deltaT/taod(n)+Ld(n-1);
+while((sum(dd-Ld(n))>0.01)||(sum(dd-Ld(n))<-0.01))
+    dd=Ld(n);
+    und(n)=1/(1+exp(-(V(n)+50)/3));   
+    taod(n)=18*exp(-((V(n)+45)/20)^2)+1.5;
+    Lf(n)=0.00045/(0.00045+Cin(n)/1000);
+    Ld(n)=(und(n)-Ld(n))*deltaT/taod(n)+Ld(n-1);
+ end;
+    JL(n)=gL*Ld(n).*Lf(n).*(V(n)-Eca(n));  % JL is the Ca current, unit: pA
+    
+%%% N-type %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function NNTC()   %%%%% N type channel, JN is the Ca current
+global V gN deltaT und  Cin  n   Eca JN Nd
+Nd(n)=Nd(n-1);
+if n==2
+    Nd(1)=1/(1+exp(-(V(n)+45)/7));
+end;
+ und(n)=1/(1+exp(-(V(n)+45)/7));
+   
+    taod(n)=18*exp(-((V(n)+70)/25)^2)+0.3;
+    Nf(n)=0.0001/(0.0001+Cin(n)/1000);
+    Nd(n)=(und(n)-Nd(n))*deltaT/taod(n)+Nd(n-1);  
+    dd=Nd(n);
+    Nd(n)=(und(n)-Nd(n))*deltaT/taod(n)+Nd(n-1);  
+while((sum(dd-Nd(n))>0.01)||(sum(dd-Nd(n))<-0.01))
+        dd=Nd(n);
+    und(n)=1/(1+exp(-(V(n)+45)/7));   
+    taod(n)=18*exp(-((V(n)+70)/25)^2)+0.3;
+    Nf(n)=0.0001/(0.0001+Cin(n)/1000);
+    Nd(n)=(und(n)-Nd(n))*deltaT/taod(n)+Nd(n-1);    
+end;
+    JN(n)=gN*Nd(n).*Nf(n).*(V(n)-Eca(n));  %%JN is the Ca current via N type channel
+
+%%% N-type %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
+function NRTC() %%%%% R type channel, JR is the Ca current.
+global gR V deltaT und  Rd Rf n  dd  Eca JR ff unf 
+Rd(n)=Rd(n-1);
+Rf(n)=Rf(n-1);
+if n==2;
+Rd(1)=1/(1+exp(-(V(n)+10)/10));
+Rf(1)=1/(1+exp((V(n)+48)/5));
+end
+    und(n)=1/(1+exp(-(V(n)+10)/10));
+    unf(n)=1/(1+exp((V(n)+48)/5));
+    taod(n)=0.1*exp(-((V(n)+62)/13)^2)+0.05;
+    taof(n)=0.5*exp(-((V(n)+55.6)/18)^2)+0.5;
+    Rd(n)=(und(n)-Rd(n))*deltaT/taod(n)+Rd(n-1);
+    dd=Rd(n);
+    Rf(n)=(unf(n)-Rf(n))*deltaT/taof(n)+Rf(n-1);
+    ff= Rf(n);
+    Rd(n)=(und(n)-Rd(n))*deltaT/taod(n)+Rd(n-1);
+while((sum(dd-Rd(n))>0.01)||(sum(dd-Rd(n))<-0.01))
+         dd=Rd(n);
+    und(n)=1/(1+exp(-(V(n)+10)/10));
+    unf(n)=1/(1+exp((V(n)+48)/5));
+    taod(n)=0.1*exp(-((V(n)+62)/13)^2)+0.05;
+    taof(n)=0.5*exp(-((V(n)+55.6)/18)^2)+0.5;
+    Rd(n)=(und(n)-Rd(n))*deltaT/taod(n)+Rd(n-1);
+    Rf(n)=(unf(n)-Rf(n))*deltaT/taof(n)+Rf(n-1);
+end;   
+    JR(n)=gR*Rd(n).*Rf(n).*(V(n)-Eca(n));  %%%%JR is the Ca current via R type channel
+    
+%%% N-type %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+function NTCC()   %%%%% T type channel, JT is the Ca current
+global deltaT V n  gT  Eca Td ftf fts  JT dd 
+Td(n)=Td(n-1);
+ftf(n)=ftf(n-1);
+fts(n)=fts(n-1);
+if n==2
+Td(1)=1/(1+exp(-(V(1)+63.5)/1.5));
+ftf(1)=1/(1+exp((V(1)+76.2)/3));
+fts(1)=1/(1+exp((V(1)+76.2)/3));
+end;
+und(n)=1/(1+exp(-(V(n)+63.5)/1.5));
+ft(n)=1/(1+exp((V(n)+76.2)/3));
+taodt(n)=65*exp(-((V(n)+68)/6)^2)+12;
+taotf(n)=50*exp(-((V(n)+72)/10)^2)+10;
+taots(n)=400*exp(-((V(n)+100)/10)^2)+400;
+    Td(n)=(und(n)-Td(n))*deltaT/taodt(n)+Td(n-1);  
+    dd=Td(n);
+    Td(n)=(und(n)-Td(n))*deltaT/taodt(n)+Td(n-1);  
+    ftf(n)=(ft(n)-ftf(n))*deltaT/taotf(n)+ftf(n-1);  
+    fts(n)=(ft(n)-fts(n))*deltaT/taots(n)+fts(n-1);  
+while((sum(dd-Td(n))>0.01)||(sum(dd-Td(n))<-0.01))
+     dd=Td(n);
+    und(n)=1/(1+exp(-(V(n)+63.5)/1.5));
+   ft(n)=1/(1+exp((V(n)+76.2)/3));
+   taodt(n)=65*exp(-((V(n)+68)/6)^2)+12;
+    taotf(n)=50*exp(-((V(n)+72)/10)^2)+10;
+   taots(n)=400*exp(-((V(n)+100)/10)^2)+400;
+    Td(n)=(und(n)-Td(n))*deltaT/taodt(n)+Td(n-1);  
+    ftf(n)=(ft(n)-ftf(n))*deltaT/taotf(n)+ftf(n-1);  
+    fts(n)=(ft(n)-fts(n))*deltaT/taots(n)+fts(n-1);  
+end;
+    JT(n)=gT*Td(n).*(ftf(n)+0.04*fts(n)).*(V(n)-Eca(n));  %% JT is the Ca current via T type channel

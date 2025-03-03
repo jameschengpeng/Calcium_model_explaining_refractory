@@ -1,0 +1,21 @@
+%% modelling the partial derivative of c_ER with respect to time
+% return a function handle
+function dC_ER_dt_func = get_dC_ER_dt_func(theta, IP3, n, IP3_spont, cyto_ER_ratio, F_leak, ROS_cyto)
+b_ER = theta(1);
+b_serca = theta(2);
+b_leak = theta(3);
+K_c_cyto1 = theta(8);
+K_c_cyto2 = theta(9);
+K_atp1 = theta(10);
+K_atp2 = theta(11);
+K_ip3 = theta(12);
+K_concentration = theta(13);
+K_serca = theta(14);
+
+FER_func = get_FER_func(IP3, n, IP3_spont, ...
+    K_c_cyto1, K_c_cyto2, K_atp1, K_atp2, K_ip3, K_concentration, ROS_cyto);
+Fserca_func = get_Fserca_func(K_serca);
+dC_ER_dt_func = @(c_cyto, c_ER, ATP) cyto_ER_ratio * (-b_ER * FER_func(c_cyto, c_ER, ATP) ...
+    + theta(2) * Fserca_func(c_cyto) ...
+    - theta(3) * F_leak);
+end

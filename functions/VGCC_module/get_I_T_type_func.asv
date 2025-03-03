@@ -1,0 +1,7 @@
+%% functional form of I_T_type
+function I_T_type_func = get_I_T_type_func(VGCC_const)
+gT_bar = VGCC_const('gT_bar');
+I_T_type_func = @(V, E_Ca) gT_bar * 
+end
+
+function 
