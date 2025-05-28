@@ -1,5 +1,5 @@
 %% preprocessing of the data
-function [resp_seq, run_seq, stim_onset, reward_onset, TT] = behavioral_data_preprocess(aqua_data_path, fps_org, fps_upsampled)
+function [resp_seq, run_seq, stim_onset, reward_onset, TT, regional_response_temp_down] = behavioral_data_preprocess(aqua_data_path, fps_org, fps_upsampled)
 aqua_data = load(aqua_data_path);
 TT = aqua_data.TT;
 full_vel = aqua_data.velocity; % full length velocity
@@ -39,6 +39,7 @@ for ii = 1:length(visual_stim_info)
 end
 
 reward_onset = reward_info(reward_info ~= -1);
+
 
 
 end

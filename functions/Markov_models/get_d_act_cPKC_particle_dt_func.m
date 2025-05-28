@@ -11,7 +11,7 @@ tau_cpkc_degrade = theta('tau_cpkc_degrade');
 c_cyto_peak = theta('c_cyto_peak');
 cPKC_delay = theta('cPKC_delay');
 if cPKC_delay ~= 0
-    ref_idx = max(1, ii - cPKC_delay * fps_upsampled);
+    ref_idx = max(1, ii - round(cPKC_delay * fps_upsampled));
     c_cyto_ref = c_cyto_record(ref_idx);
     DAG_ref = DAG_record(ref_idx);
 else
@@ -21,7 +21,7 @@ end
 
 Kc_cyto = 0.6;
 KDAG = 0.2;
-local_start = max(1, ii - tau_cpkc_degrade * fps_upsampled);
+local_start = max(1, ii - round(tau_cpkc_degrade * fps_upsampled));
 local_c_cyto_seq = c_cyto_record(local_start:ii);
 marker_point = min(max(max(local_c_cyto_seq), 1), c_cyto_peak);
 local_closest2marker = find(abs(local_c_cyto_seq-marker_point) <= 0.03, 1, 'last' );

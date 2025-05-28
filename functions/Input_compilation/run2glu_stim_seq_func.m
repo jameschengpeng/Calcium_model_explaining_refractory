@@ -13,7 +13,7 @@ run_seq = arrayfun(run_func, discrete_time); % now the run_seq is scaled
 glu_max1 = 1.2; % for salient stim
 glu_max2 = 1; % for threshold stim
 %% visual stimuli evoked
-visual_glu_stim = zeros(size(run_seq));
+visual_glu_stim = 0.01 * ones(size(run_seq));
 if ~isempty(stim_onset)
     % model the glutamate level after visual stimulation by product of two
     % Hill equations
@@ -53,7 +53,7 @@ for ii = 1:length(start_indices)
     end
 end
 start_indices = revised_start; end_indices = revised_end;
-run_glu_stim = zeros(size(run_seq));
+run_glu_stim = 0.01 * ones(size(run_seq));
 
 for ii = 1:length(start_indices)
     s = start_indices(ii);
