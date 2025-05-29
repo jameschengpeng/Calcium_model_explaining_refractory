@@ -1,2 +1,2 @@
 # Calcium_model_explaining_refractory
-This repository contains the code for an astrocyte calcium signaling model that explains refractory period.
+This repository contains the code for an astrocyte calcium signaling model that explains refractory period. The folder functions/ contains all necessary functions for the model, which have been divided into several sub-folders based on their categories. The folder Data/ contains the experimental data we used in model fitting. To run a demo, please download this repository and open the main.m by MATLAB. In main.m, you can set the mouse's name, recording location, and recording number, as indicated in Data/ folder, and then do a simulation on the calcium signaling and compare with the experimentally measured calcium signal.
