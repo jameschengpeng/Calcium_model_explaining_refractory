@@ -1,4 +1,4 @@
-%% verification on entire recording session
+%% add path. NO NEED TO CHANGE ANYTHING HERE.
 clear;
 clc;
 
@@ -8,10 +8,10 @@ data_path = fullfile(base_path, 'Data');
 % Add all subdirectories to the MATLAB path
 addpath(genpath(base_path));
 
-%%
-mouse_name = 'Joey';
-loc = 'RecLoc2';
-num = '010';
+%% Specify the mouse name, recording location, and recording number. FEEL FREE TO CHANGE HERE BASED ON THE DATA FOLDER
+mouse_name = 'Joey'; % This can be changed. See Data/
+loc = 'RecLoc2'; % This can be changed. See Data/
+num = '010'; % This can be changed. See Data/
 prefix = strcat(mouse_prefix(mouse_name), num);
 files = dir(fullfile(data_path, mouse_name, loc, [prefix '*.mat']));
 aqua_data_path = fullfile(data_path, mouse_name, loc, files(1).name);
@@ -19,7 +19,7 @@ fps_upsampled = 50;
 fps_org = 30;
 [resp_seq, run_seq, stim_onset, reward_onset, TT] = behavioral_data_preprocess(aqua_data_path, fps_org, fps_upsampled);
 
-%%
+%% Doing the simulation. These initial values are same as what is presented in the paper.
 init_c_cyto = 0.05; % 50 nM
 init_IP3 = 0.25;
 init_c_ER = 50; % microM
@@ -55,7 +55,7 @@ other_settings = other_settings_configuration();
     use_precomputed_input, pre_NE_seq, pre_NE_fun, pre_glu_seq, pre_glu_fun, pre_DA_seq, pre_DA_fun, ...
     use_neuron_derived_glu, include_ATP);
 
-%%
+%% Extract model predictions
 FER = flux_table{:,"FER"};
 Fserca = flux_table{:,"Fserca"};
 F_leakage = flux_table{:,"F_leakage"};
@@ -99,7 +99,7 @@ run_seq = chemical_table{:,'Running'};
 run_seq_filt = imgaussfilt(run_seq, 1);
 
 
-%% simplified plot
+%% Plot the prediction
 figure;
 x = (1:length(run_seq)) * 1/fps_upsampled;
 filtered_resp = imgaussfilt(resp_seq, fps_upsampled);
