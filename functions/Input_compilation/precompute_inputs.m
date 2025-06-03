@@ -2,7 +2,11 @@
 function [precomputed_NE_seq, precomputed_NE_func, precomputed_glu_stim_seq, precomputed_glu_stim_func, precomputed_DA_seq, precomputed_DA_func] = ...
     precompute_inputs(theta, other_settings, aqua_data_path, fps_org, fps_upsampled)
 % note that aqua_data_path is a mat file, remove the .mat will be a folder
+<<<<<<< HEAD
 [recording_folder, ~, ~] = fileparts(aqua_data_path); % the folder to store the precomputed inputs
+=======
+[recording_folder,~,~] = fileparts(aqua_data_path); % the folder to store the precomputed inputs
+>>>>>>> e0b5117542da636d219ee2ff32d65658a59bf16f
 precomputed_input_file = fullfile(recording_folder, 'precomputed_inputs.mat');
 
 if ~isfile(precomputed_input_file) % precomputed information is NOT available
