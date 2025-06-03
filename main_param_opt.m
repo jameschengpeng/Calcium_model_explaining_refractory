@@ -12,8 +12,8 @@ save_path = '';  % <-- Set this to your own path, e.g., 'C:\Users\YourName\Docum
 addpath(genpath(base_path));
 
 %% Hyper parameters for genetic algorithm. Adjust if needed
-pop_size = 10; % the population size, divisible by 2
-tournament_size = 5; % tournament size for selection
+pop_size = 40; % the population size, divisible by 2
+tournament_size = 15; % tournament size for selection
 max_generations = 15;
 mutation_rate = 0.1;
 
