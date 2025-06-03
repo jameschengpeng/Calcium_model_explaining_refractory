@@ -1,10 +1,66 @@
 # Calcium_model_explaining_refractory
-This repository contains the code and data for an astrocyte intracellular calcium signaling model that explains refractory period. 
 
-The folder functions/ contains the MATLAB implementation of the model and the code for parameter optimization by genetic algorithm. They have been divided into several sub-folders based on their categories. The model, described by a system of ordinary differential equations, was simulated using customly implemented 4th order Runge-Kutta method. Details of the simulation loop can be found in run.m in functions/.
+This repository contains the code and data for an astrocyte intracellular calcium signaling model that explains the **refractory period** observed in experimental recordings.
 
-The folder Data/ contains the preprocessed experimental data we used in model fitting. In Data/, there are subfolders for four mice which participated in the experiment. Within a folder for a mouse, there are subfolders for recordings from diffrent recording locations on its motor cortex. Within the folder for a recording location, there are specific calcium recording data stored in subfolders. Within each subfolder of calcium recording, there is a MAT file that contain the real calcium signal extracted from calcium recording video (attribute name: avg_roi_temp_down), the mouse's run velocity time series (attribute name: velocity), and a table containing the visual stimuli and reward information (attribute name: TT). Besides the MAT file, there are also pre-computed inputs to the model in case you need a faster computation.
+---
 
-**To run a demo, please download this repository and open the main_simulation.m by MATLAB.** In main_simulation.m, you can set the mouse's name, recording location, and recording number, according to the contents in Data/ folder, and then do a simulation on the calcium signaling and compare with the experimentally measured calcium signal.
+## Repository Structure
 
-**To try the parameter optimization by genetic algorithm, open the main_param_opt.m by MATLAB.** In main_param_opt.m, you need to specify a save_path to store the train-test split and five-fold cross validation information, and the folders that store the intermediate results of the genetic algorithm. You may also set pop_size, tournament_size, max_generations, mutation_rate by yourself. For your reference, the computing time for one generation of genetic algorithm on a Ubuntu server with Intel(R) Xeon(R) Platinum 8268 CPU @ 2.90GHz is around 9000s, with pop_size=40, tournament_size=15, and 28 recordings used for training.
+### `functions/`
+This directory contains the **MATLAB implementation** of the model and the **parameter optimization** code using a genetic algorithm. The code is organized into several subfolders based on functionality.
+
+- The calcium signaling model is defined by a system of **ordinary differential equations (ODEs)**.
+- A custom implementation of the **4th-order Runge-Kutta method** is used for simulation.
+- The simulation loop can be found in `functions/run.m`.
+
+### `Data/`
+This directory contains **preprocessed experimental data** used for model fitting. The structure is as follows:
+
+- Four subfolders represent data from **four individual mice**.
+- Each mouse folder contains subfolders for **recording locations** on the motor cortex.
+- Each recording location folder includes subfolders for **individual calcium recordings**.
+
+Inside each calcium recording folder:
+- A `.mat` file stores:
+  - `avg_roi_temp_down`: the real calcium signal extracted from imaging data
+  - `velocity`: the animal’s running speed time series
+  - `TT`: a table containing visual stimuli and reward event timestamps
+- Additionally, precomputed **model input variables** are included to enable faster simulation runs.
+
+---
+
+## How to Run
+
+### 🧪 **Run a Simulation Demo**
+
+1. Download or clone this repository.
+2. Open `main_simulation.m` in MATLAB.
+3. Set the following parameters in the script:
+   - Mouse name
+   - Recording location
+   - Recording number  
+   (Refer to the structure in the `Data/` folder)
+4. Run the simulation and compare the model output with the experimental calcium signal.
+
+---
+
+### 🧬 **Parameter Optimization via Genetic Algorithm**
+
+1. Open `main_param_opt.m` in MATLAB.
+2. Set the following parameters:
+   - `save_path`: directory to store train-test splits and cross-validation data
+   - Paths to folders for intermediate GA results
+   - GA parameters: `pop_size`, `tournament_size`, `max_generations`, `mutation_rate`
+3. Run the script to start optimization.
+
+> 💡 **Performance Note:**  
+> On an Ubuntu server with an **Intel(R) Xeon(R) Platinum 8268 CPU @ 2.90GHz**, one generation of the genetic algorithm takes approximately **9000 seconds**, using:
+> - `pop_size = 40`
+> - `tournament_size = 15`
+> - 28 recordings for training
+
+---
+
+## Citation
+
+If you use this code or data in your research, please cite the corresponding publication (to be added here when available).
