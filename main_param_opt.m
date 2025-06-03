@@ -6,7 +6,7 @@ data_path = fullfile(base_path, 'Data');
 
 % PLEASE CREATE AND PASTE YOUR OWN SAVE PATH HERE. The train test split information and optimization results
 % will be saved in save_path
-save_path = '/work/Jamespeng/Astrocyte/Code_for_publish';  % <-- Set this to your own path, e.g., 'C:\Users\YourName\Documents\GA_Optimization_Results'
+save_path = '';  % <-- Set this to your own path, e.g., 'C:\Users\YourName\Documents\GA_Optimization_Results'
 
 % Add all subdirectories to the MATLAB path
 addpath(genpath(base_path));
