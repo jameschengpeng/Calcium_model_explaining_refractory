@@ -2,7 +2,7 @@
 clear;
 clc;
 
-base_path = fileparts(which('main.m'));
+base_path = fileparts(which('main_simulation.m'));
 data_path = fullfile(base_path, 'Data');
 
 % Add all subdirectories to the MATLAB path

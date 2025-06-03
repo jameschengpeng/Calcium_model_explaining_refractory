@@ -18,7 +18,7 @@ for ii = 1:length(mice_names)
         unique_prefix = find_unique_recording_prefix(recordings);
         for kk = 1:length(unique_prefix)
             prefix = unique_prefix{kk};
-            filePattern = fullfile(location_path, [prefix, '*.mat']);
+            filePattern = fullfile(location_path, [prefix, '*'], [prefix, '*.mat']);
 
             % List all the matching files
             allFiles = dir(filePattern);
