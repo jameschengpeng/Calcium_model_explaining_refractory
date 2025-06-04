@@ -54,7 +54,7 @@ Inside each calcium recording folder:
 3. Run the script to start optimization.
 
 > 💡 **Performance Note:**  
-> On an Ubuntu server with an **Intel(R) Xeon(R) Platinum 8268 CPU @ 2.90GHz**, one generation of the genetic algorithm takes approximately **9000 seconds**, using:
+> On an Ubuntu server with four **Intel(R) Xeon(R) Platinum 8268 CPU @ 2.90GHz** (i.e., 96 workers to be used in MATLAB `parpool`), one generation of the genetic algorithm takes approximately **9000 seconds**, using:
 > - `pop_size = 40`
 > - `tournament_size = 15`
 > - 28 recordings for training
