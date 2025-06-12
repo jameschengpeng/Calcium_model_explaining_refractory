@@ -1,4 +1,4 @@
-# Calcium_model_explaining_refractory
+# An astrocytic intracellular calcium signaling model with a focus on calcium refractory period
 
 This repository contains the code and data for an astrocyte intracellular calcium signaling model that explains the **refractory period** observed in experimental recordings.
 
