@@ -61,6 +61,12 @@ Inside each calcium recording folder:
 
 ---
 
+## Tested MATLAB Version
+
+The code has been tested and validated on **MATLAB** versions **R2023a, R2024b, R2025a**
+
+---
+
 ## Citation
 
 If you use this code or data in your research, please cite the corresponding publication (to be added here when available).
