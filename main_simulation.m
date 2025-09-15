@@ -10,8 +10,8 @@ addpath(genpath(base_path));
 
 %% Specify the mouse name, recording location, and recording number. FEEL FREE TO CHANGE HERE BASED ON THE DATA FOLDER
 mouse_name = 'Joey'; % This can be changed. See Data/
-loc = 'RecLoc2'; % This can be changed. See Data/
-num = '010'; % This can be changed. See Data/
+loc = 'RecLoc1'; % This can be changed. See Data/
+num = '001'; % This can be changed. See Data/
 prefix = strcat(mouse_prefix(mouse_name), num);
 data_dir = dir(fullfile(data_path, mouse_name, loc, [prefix '*']));
 data_dir = data_dir.name;
@@ -50,6 +50,8 @@ other_settings = other_settings_configuration();
     precompute_inputs(theta, other_settings, aqua_data_path, fps_org, fps_upsampled);
 
 
+
+%%
 [chemical_table, flux_table] = run(theta, other_settings, abs(run_seq), NE_spont, running_threshold, fps_org, fps_upsampled, ...
     stim_onset, cyto_ER_ratio, cyto_mito_ratio, init_IP3, DA_spont, reward_onset, ...
     init_c_cyto, init_c_ER, init_c_mito, init_ROS_mito, init_ROS_cyto, IP3_spont, smoothing_factor, TT, ...

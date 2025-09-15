@@ -1,20 +1,24 @@
 %% helper function
 function [extractedName, extractedLocation, extractedNumber] = extractInfoFromPath(path)
-    % Split path into parts using file separator
-    parts = strsplit(path, filesep);
+% extractInfoFromPath Extracts the name, location, and number from a given file path.
 
-    % Extract required parts from the path
-    extractedName = parts{end-3};      % 'Joey'
-    extractedLocation = parts{end-2};  % 'RecLoc2'
+% Split the file path into parts using the system-specific file separator.
+parts = strsplit(path, filesep);
+% Locate the directory 'AQUA_processed_data'
+idx = find(strcmp(parts, 'AQUA_processed_data'), 1);
+% Check that the expected parts exist in the path
+if isempty(idx) || numel(parts) < idx + 3
+    error('The given path does not follow the expected format.');
+end
+% Extract the name (folder immediately after 'AQUA_processed_data')
+extractedName = parts{idx+1};
+% Extract the location (the folder after the name)
+extractedLocation = parts{idx+2};
+% Extract the file name (should be the next element in the parts)
+% Remove the extension using fileparts
+[~, fileBase, ~] = fileparts(parts{idx+3});
 
-    % Extract file name without extension
-    [~, fileName, ~] = fileparts(path);
-
-    % Extract number part (before underscore)
-    underscoreIdx = strfind(fileName, '_');
-    if ~isempty(underscoreIdx)
-        extractedNumber = fileName(1:underscoreIdx(1)-1);
-    else
-        extractedNumber = fileName;
-    end
+% Assume the number is the first part of the file name, separated by an underscore.
+fileParts = strsplit(fileBase, '_');
+extractedNumber = fileParts{1};
 end

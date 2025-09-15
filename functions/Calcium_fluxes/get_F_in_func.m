@@ -7,7 +7,7 @@
 % however, in this article, the authors didn't specify the channel they
 % are modelling, so, we turned to VGCC modelling
 
-function F_in_func = get_F_in_func(VGCC_const)
+function F_in_func = get_F_in_func(VGCC_const, theta)
 % F_in_func = @(IP3) 0.025 + 0.2 * Hill_func(IP3, 2, 1);
-F_in_func = @(I_VGCC, PKA_particle, AMPA_particle) get_J_VGCC(VGCC_const, I_VGCC, PKA_particle) + 0.1 * mean(AMPA_particle(:, 3)) + 0.01; % i.e., returned J_VGCC_func = @(I_VGCC, PKA_particle)
+F_in_func = @(I_VGCC, PKA_particle, AMPA_particle) get_J_VGCC(VGCC_const, I_VGCC, PKA_particle, theta) + 0.1 * mean(AMPA_particle(:, 3)) + 0.01; % i.e., returned J_VGCC_func = @(I_VGCC, PKA_particle)
 end

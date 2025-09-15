@@ -108,7 +108,15 @@ for ii = 1:(pop_size-1)
     for j = 1:length(all_fields)
         field = all_fields{j};
         % Randomly sample a value within the bounds for each important parameter.
-        candidate(field) = L_bound(j) + (U_bound(j) - L_bound(j)) * rand();
+        if L_bound(j) > 0 && U_bound(j) > 0
+            % --- log-uniform initialization ---
+            log_lb = log10(L_bound(j));
+            log_ub = log10(U_bound(j));
+            candidate(field) = 10^(log_lb + (log_ub - log_lb) * rand());
+        else
+            % --- fallback: linear-uniform initialization ---
+            candidate(field) = L_bound(j) + (U_bound(j) - L_bound(j)) * rand();
+        end
     end
     population{ii} = candidate;
 end

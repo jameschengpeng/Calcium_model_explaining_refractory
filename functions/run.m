@@ -149,7 +149,7 @@ c_ER_record = zeros(size(run_seq)); c_ER_record(1) = c_ER;
 c_mito_record = zeros(size(run_seq)); c_mito_record(1) = c_mito;
 IP3_record = zeros(size(run_seq)); IP3_record(1) = IP3;
 if include_ATP
-    ATP_func = get_ATP_func(NE_func, glu_ast);
+    ATP_func = get_ATP_func(NE_func, glu_ast, theta);
 else
     ATP_func = @(x) 0.01;
 end
@@ -323,7 +323,7 @@ for ii = 2:length(NE_seq)
 
     %% update on ATP, ATP_func = @(t)
     if include_ATP
-        ATP_func = get_ATP_func(NE_func, glu_ast);
+        ATP_func = get_ATP_func(NE_func, glu_ast, theta);
     else
         ATP_func = @(x) 0.01;
     end
@@ -398,8 +398,8 @@ for ii = 2:length(NE_seq)
     F_leakage = F_leakage_func(c_cyto, c_ER);
 
     %% update on F_in and F_out  F_in_func = @(IP3)    F_out_func = @(c_cyto)
-    F_in_func = get_F_in_func(VGCC_const);
-    F_out_func = get_F_out_func();
+    F_in_func = get_F_in_func(VGCC_const, theta);
+    F_out_func = get_F_out_func(theta);
     F_in = F_in_func(I_VGCC, PKA_particle, AMPA_particle);
     F_out = F_out_func(c_cyto, act_cPKC_particle);
 

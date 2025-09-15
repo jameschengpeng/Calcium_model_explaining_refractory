@@ -35,8 +35,8 @@ IP3_effect_R1 = @(IP3) (log10(IP3)+c2_R1)^2 / ((log10(IP3)+c2_R1)^2 + c1_R1^2);
 
 ROS = ROS_cyto;
 ROS_basis_effect = 0.7;
-ROS_effect = ROS_basis_effect + (1-ROS_basis_effect) * Hill_func(ROS, 1, 0.3);
-PKA_effect = @(PKA_particle) 0.4 * Hill_func(mean(PKA_particle(:,2)), 1, 3);
+ROS_effect = ROS_basis_effect + (1-ROS_basis_effect) * Hill_func(ROS, 1, theta('K_ROS'));
+PKA_effect = @(PKA_particle) 0.4 * Hill_func(mean(PKA_particle(:,2)), 1, theta('K_PKA'));
 FER_func = @(c_cyto, c_ER, ATP, IP3, PKA_particle) ...
     (IP3R2_percentage * (c_cyto_effect(c_cyto) * IP3_effect(IP3-0.2, ATP) * ATP_effect(ATP, IP3-0.2) * ROS_effect + PKA_effect(PKA_particle)) ...
     + IP3R1_percentage * (c_cyto_ATP_effect_R1(c_cyto, ATP) * IP3_effect_R1(IP3-0.2) * ROS_effect + PKA_effect(PKA_particle))) * ...

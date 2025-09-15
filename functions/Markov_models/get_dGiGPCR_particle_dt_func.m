@@ -10,13 +10,14 @@ end
 function transition_matrix = get_transition_matrix(theta, NE, NE_spont, NE_func, t, PKA_particle, cAMP, glu_cleft, DA_func)
 b_GiGPCR_active = theta('b_GiGPCR_active');
 NE_thre = theta('NE_thre');
-b_GiGPCR_deactive = theta('b_GiGPCR_deactive');
+b_GiGPCR_deactive_PKA = theta('b_GiGPCR_deactive_PKA');
+b_GiGPCR_deactive_cAMP = theta('b_GiGPCR_deactive_cAMP');
 PKA = mean(PKA_particle(:,2));
 if NE > NE_spont + NE_thre
-    activate = b_GiGPCR_active * (NE_func(t)-NE_thre + max(0, glu_cleft-0.1) + DA_func(t));
+    activate = b_GiGPCR_active * (theta('NE_Gi') * (NE_func(t)-NE_thre) + theta('glu_Gi') * max(0, glu_cleft-0.1) + theta('DA_Gi') * DA_func(t));
 else
     activate = 0;
 end
-deactivate = b_GiGPCR_deactive * (PKA + cAMP);
+deactivate = b_GiGPCR_deactive_PKA * PKA + b_GiGPCR_deactive_cAMP * cAMP;
 transition_matrix = [-activate activate; deactivate -deactivate];
 end

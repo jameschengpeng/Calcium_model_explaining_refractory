@@ -46,7 +46,7 @@ for ii = 1:length(fields)
                 idx_end = start_end_indices(2, jj);
                 sqr_diff_sum = sqr_diff_sum + sum((real_signal(idx_start:idx_end) - simulated_signal(idx_start:idx_end)).^2);
             end
-            rmse_peaks_val = sqr_diff_sum / n_element;
+            rmse_peaks_val = sqrt(sqr_diff_sum / n_element);
         end
         rmse_peaks(ii) = rmse_peaks_val;
     end

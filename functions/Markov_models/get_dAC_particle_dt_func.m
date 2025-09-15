@@ -16,9 +16,9 @@ b_AC_degrade = theta('b_AC_degrade');
 PKA = mean(PKA_particle(:,2));
 GsGPCR = mean(GsGPCR_particle(:,2));
 GiGPCR = mean(GiGPCR_particle(:,2));
-activate = b_AC_produce * Hill_func(GsGPCR, 1, 0.2);
+activate = b_AC_produce * Hill_func(GsGPCR, 1, theta('K_AC1'));
 if PKA > 0 || GiGPCR > 0
-    deactivate = b_AC_degrade * (Hill_func(PKA, 2, 0.3) + Hill_func(GiGPCR, 2, 0.1));
+    deactivate = b_AC_degrade * (Hill_func(PKA, 2, 0.3) + Hill_func(GiGPCR, 2, theta('K_AC2')));
 else
     deactivate = 0.05;
 end

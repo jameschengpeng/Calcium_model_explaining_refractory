@@ -10,7 +10,7 @@ n_steps = ceil(fps_upsampled * termination_time);
 discrete_time = linspace(0, termination_time, n_steps);
 run_seq = arrayfun(run_func, discrete_time); % now the run_seq is scaled
 
-glu_max1 = 1.2; % for salient stim
+glu_max1 = theta('glu_SA'); % for salient stim
 glu_max2 = 1; % for threshold stim
 %% visual stimuli evoked
 visual_glu_stim = 0.01 * ones(size(run_seq));
@@ -29,7 +29,7 @@ if ~isempty(stim_onset)
         local_length = min(fps_upsampled*20, length(visual_glu_stim)-stim_idx+1);
         local_glu_stim_seq = zeros(1, local_length); % visual stim induced glutamate lapse for some time
         glu_amp = glu_max;
-        func = @(t) Hill_func(max(0, t-NT_delay), 1, K_glu1) * reverse_Hill_func(max(0, t-NT_delay), 1, K_glu2);
+        func = @(t) Hill_func(max(0, t-NT_delay), 1, theta('K_glu1')) * reverse_Hill_func(max(0, t-NT_delay), 1, theta('K_glu2'));
         t_seq = (0:(length(local_glu_stim_seq)-1))/fps_upsampled;
         excess_glu = arrayfun(func, t_seq);
         excess_glu = (excess_glu - min(excess_glu))/(max(excess_glu) - min(excess_glu)) * glu_amp;
@@ -60,7 +60,7 @@ for ii = 1:length(start_indices)
     e = end_indices(ii);
     time_length = (e-s)/fps_upsampled;
     run_ampl = max(run_seq(s:e));
-    glu_stim_Hill = @(x) Hill_func(x, 2, 0.1*time_length) * reverse_Hill_func(x, 2, 0.3*time_length);
+    glu_stim_Hill = @(x) Hill_func(x, 2, theta('K_glu3') * time_length) * reverse_Hill_func(x, 2, theta('K_glu4') * time_length);
     part1 = zeros(1,s); part2 = (1:(length(run_seq)-s))./fps_upsampled;
     glu_stim_subseq = [part1 part2];
     glu_stim_subseq = arrayfun(glu_stim_Hill, glu_stim_subseq);
@@ -73,7 +73,7 @@ end
 run_glu_stim = (run_glu_stim - min(run_glu_stim))./(max(run_glu_stim) - min(run_glu_stim));
 
 %% combining visual evoked and run evoked glu_stim
-glu_stim_seq = 0.8 * run_glu_stim + 0.2 * visual_glu_stim;
+glu_stim_seq = theta('b_run_glu') * run_glu_stim + theta('b_visual_glu') * visual_glu_stim;
 % glu_stim_seq = 0.3 * run_glu_stim + 0.7 * visual_glu_stim;
 % for glu_stim_func, which should take continuous input t, do linear
 % interpolation to the glu_stim_seq

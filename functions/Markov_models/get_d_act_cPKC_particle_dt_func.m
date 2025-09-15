@@ -19,8 +19,8 @@ else
     DAG_ref = DAG;
 end
 
-Kc_cyto = 0.6;
-KDAG = 0.2;
+Kc_cyto = theta('Kc_cyto');
+KDAG = theta('KDAG');
 local_start = max(1, ii - round(tau_cpkc_degrade * fps_upsampled));
 local_c_cyto_seq = c_cyto_record(local_start:ii);
 marker_point = min(max(max(local_c_cyto_seq), 1), c_cyto_peak);
