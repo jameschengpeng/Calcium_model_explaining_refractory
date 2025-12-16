@@ -97,8 +97,10 @@ if ~isfile(fullfile(path2behavior, behavioral_filename))
 end
 
 %% perform the evolutionary strategy to optimize the params
-% Base theta: a containers.Map with all parameters (fill in the rest as needed)
-direction_indicator = [-1; -1; 1];
+% Five metrics: correlation, cosine, rmse, activity-dependent rmse, and normalized DTW. 
+% Corr and cos are the larger the better, the other three the smaller the
+% better
+direction_indicator = [-1; -1; 1; 1; 1]; 
 
 base_theta = theta_init;
 % Initialize population as a cell array of containers.Map objects

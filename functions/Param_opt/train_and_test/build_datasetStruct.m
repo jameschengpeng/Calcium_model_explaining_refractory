@@ -1,5 +1,5 @@
 %% to create dataset struct, key is mouse's name, value is a cell array containing the path to the recording 
-% Input: data_path   the path to the folder of AQUA_processed_data
+% Input: data_path   the path to the Data folder
 % Output: datasetStruct   to be fed to the function
 % createStratifiedTrainTestSplits()
 function datasetStruct = build_datasetStruct(data_path)
@@ -18,31 +18,18 @@ for ii = 1:length(mice_names)
         unique_prefix = find_unique_recording_prefix(recordings);
         for kk = 1:length(unique_prefix)
             prefix = unique_prefix{kk};
-            filePattern = fullfile(location_path, [prefix, '*.mat']);
+            
+            dirPattern = fullfile(location_path, [prefix, '*']);
 
-            % List all the matching files
-            allFiles = dir(filePattern);
+            % List the matching directory
+            matched_dir = dir(dirPattern);
             
-            % Exclude files that have "processed" in their filename (case insensitive)
-            mat_files = allFiles(~contains({allFiles.name}, 'processed', 'IgnoreCase', true));
-            
-            % Check if any file was found
-            if isempty(mat_files)
-                error('No MAT file found with the specified prefix.');
-            end
-            
-            % Extract the names from the file structure into a cell array.
-            fileNames = {mat_files.name};
-            
-            % Sort the file names lexicographically (i.e., based on ASCII code order).
-            [~, idx] = sort(fileNames);
-            
-            % The first element in the sorted list is the file with the smallest ASCII code
-            selectedFile = mat_files(idx(1));
-            
+            % the matFile has the same name as the matched_dir
+            matFile = strcat(matched_dir.name, '.mat');
+            matFilePath = fullfile(matched_dir.folder, matched_dir.name, matFile);
+
             % Construct the full path to the selected file.
-            selectedFilePath = fullfile(selectedFile.folder, selectedFile.name);
-            datasetStruct.(mouse) = [datasetStruct.(mouse); selectedFilePath];
+            datasetStruct.(mouse) = [datasetStruct.(mouse); matFilePath];
         end
     end
 end

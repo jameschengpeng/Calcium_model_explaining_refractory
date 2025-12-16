@@ -4,8 +4,8 @@ function [extractedName, extractedLocation, extractedNumber] = extractInfoFromPa
 
 % Split the file path into parts using the system-specific file separator.
 parts = strsplit(path, filesep);
-% Locate the directory 'AQUA_processed_data'
-idx = find(strcmp(parts, 'AQUA_processed_data'), 1);
+% Locate the directory 'Data'
+idx = find(strcmp(parts, 'Data'), 1);
 % Check that the expected parts exist in the path
 if isempty(idx) || numel(parts) < idx + 3
     error('The given path does not follow the expected format.');
