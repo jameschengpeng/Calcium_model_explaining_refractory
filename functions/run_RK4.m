@@ -413,7 +413,7 @@ for ii = 2:length(NE_seq)
 
     %% update on ROS_mito, ROS_cyto; dROS_cyto_dt_func = @(ROS_mito, ROS_cyto); dROS_mito_dt_func = @(ROS_mito, ROS_cyto, c_mito, glu_ast_record, t)
     dROS_mito_dt_func = get_dROS_mito_dt_func(theta, fps_upsampled);
-    dROS_cyto_dt_func = get_dROS_cyto_dt_func(theta, cyto_mito_ratio);
+    dROS_cyto_dt_func = get_dROS_cyto_dt_func(theta, cyto_mito_ratio, fps_upsampled);
 
     %% update on c_cyto, c_ER, and c_mito, dC_cyto_dt_func = @(c_cyto, c_ER, ATP, IP3); dC_ER_dt_func = @(c_cyto, c_ER, ATP, IP3); dC_mito_dt_func = @(c_cyto, c_mito, ROS_mito)
     dC_cyto_dt_func = get_dC_cyto_dt_func(theta, c_mito, c_cyto, ROS_mito, ROS_cyto, act_cPKC_particle, other_settings, VGCC_const);
@@ -421,25 +421,25 @@ for ii = 2:length(NE_seq)
     dC_mito_dt_func = get_dC_mito_dt_func(theta, cyto_mito_ratio, c_mito, c_cyto);
 
     k1_ROS_mito = dt * dROS_mito_dt_func(ROS_mito, ROS_cyto, c_mito, glu_ast_record, t0);
-    k1_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito, ROS_cyto);
+    k1_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito, ROS_cyto, c_mito);
     k1_c_cyto = dt * dC_cyto_dt_func(c_cyto, c_ER, ATP_func(t0), IP3, PKA_particle, act_cPKC_particle, I_VGCC, AMPA_particle, init_c_ER);
     k1_c_ER = dt * dC_ER_dt_func(c_cyto, c_ER, ATP_func(t0), IP3, PKA_particle, init_c_ER);
     k1_c_mito = dt * dC_mito_dt_func(c_cyto, c_mito, ROS_mito);
 
     k2_ROS_mito = dt * dROS_mito_dt_func(ROS_mito + k1_ROS_mito/2, ROS_cyto + k1_ROS_cyto/2, c_mito + k1_c_mito/2, glu_ast_record, t0+dt/2);
-    k2_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito + k1_ROS_mito/2, ROS_cyto + k1_ROS_cyto/2);
+    k2_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito + k1_ROS_mito/2, ROS_cyto + k1_ROS_cyto/2, c_mito + k1_c_mito/2);
     k2_c_cyto = dt * dC_cyto_dt_func(max(0,c_cyto + k1_c_cyto/2), max(0,c_ER + k1_c_ER/2), ATP_func(t0 + dt/2), IP3+k1_IP3/2, PKA_particle+k1_PKA/2, act_cPKC_particle+k1_cPKC/2, I_VGCC, AMPA_particle+k1_AMPA/2, init_c_ER);
     k2_c_ER = dt * dC_ER_dt_func(max(0,c_cyto + k1_c_cyto/2), max(0,c_ER + k1_c_ER/2), ATP_func(t0 + dt/2), IP3+k1_IP3/2, PKA_particle+k1_PKA/2, init_c_ER);
     k2_c_mito = dt * dC_mito_dt_func(max(0,c_cyto+k1_c_cyto/2), max(0,c_mito+k1_c_mito/2), ROS_mito+k1_ROS_mito/2);
 
     k3_ROS_mito = dt * dROS_mito_dt_func(ROS_mito + k2_ROS_mito/2, ROS_cyto + k2_ROS_cyto/2, c_mito + k2_c_mito/2, glu_ast_record, t0+dt/2);
-    k3_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito + k2_ROS_mito/2, ROS_cyto + k2_ROS_cyto/2);
+    k3_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito + k2_ROS_mito/2, ROS_cyto + k2_ROS_cyto/2, c_mito + k2_c_mito/2);
     k3_c_cyto = dt * dC_cyto_dt_func(max(0,c_cyto + k2_c_cyto/2), max(0,c_ER + k2_c_ER/2), ATP_func(t0 + dt/2), IP3+k2_IP3/2, PKA_particle+k2_PKA/2, act_cPKC_particle+k2_cPKC/2, I_VGCC, AMPA_particle+k2_AMPA/2, init_c_ER);
     k3_c_ER = dt * dC_ER_dt_func(max(0,c_cyto + k2_c_cyto/2), max(0,c_ER + k2_c_ER/2), ATP_func(t0 + dt/2), IP3+k2_IP3/2, PKA_particle+k2_PKA/2, init_c_ER);
     k3_c_mito = dt * dC_mito_dt_func(max(0,c_cyto+k2_c_cyto/2), max(0,c_mito+k2_c_mito/2), ROS_mito+k2_ROS_mito/2);
 
     k4_ROS_mito = dt * dROS_mito_dt_func(ROS_mito + k3_ROS_mito, ROS_cyto + k3_ROS_cyto, c_mito + k3_c_mito, glu_ast_record, t0+dt);
-    k4_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito + k3_ROS_mito, ROS_cyto + k3_ROS_cyto);
+    k4_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito + k3_ROS_mito, ROS_cyto + k3_ROS_cyto, c_mito + k3_c_mito);
     k4_c_cyto = dt * dC_cyto_dt_func(max(0,c_cyto + k3_c_cyto), max(0,c_ER + k3_c_ER), ATP_func(t0 + dt), IP3+k3_IP3, PKA_particle+k3_PKA, act_cPKC_particle+k3_cPKC, I_VGCC, AMPA_particle+k3_AMPA, init_c_ER);
     k4_c_ER = dt * dC_ER_dt_func(max(0,c_cyto + k3_c_cyto), max(0,c_ER + k3_c_ER), ATP_func(t0 + dt), IP3+k3_IP3, PKA_particle+k3_PKA, init_c_ER);
     k4_c_mito = dt * dC_mito_dt_func(max(0,c_cyto+k3_c_cyto), max(0,c_mito+k3_c_mito), ROS_mito+k3_ROS_mito);

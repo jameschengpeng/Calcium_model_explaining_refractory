@@ -8,7 +8,8 @@ b_ROS2glu = theta('b_ROS2glu');
 ROS_threshold = theta('ROS_threshold'); % maximum ROS inside mitochondria
 b_ROS_flow = theta('b_ROS_flow');
 
-dROS_mito_dt_func = @(ROS_mito, ROS_cyto, c_mito, glu_ast_record, t) b_ROS2glu * ROS_glu(glu_ast_record, ROS_delay, t, fps_upsampled) - b_ROS_flow * ROS_flow(ROS_mito, ROS_cyto, c_mito, ROS_threshold);
+dROS_mito_dt_func = @(ROS_mito, ROS_cyto, c_mito, glu_ast_record, t) b_ROS2glu * ROS_glu(glu_ast_record, ROS_delay, t, fps_upsampled) - ...
+    b_ROS_flow * ROS_flow(ROS_mito, ROS_cyto, c_mito, ROS_threshold, fps_upsampled);
 end
 
 function dROSdt = ROS_glu(glu_ast_record, ROS_delay, t, fps_upsampled)
@@ -21,10 +22,10 @@ end
 end
 
 
-function flow = ROS_flow(ROS_mito, ROS_cyto, c_mito, ROS_threshold)
-if ROS_mito >= ROS_threshold || c_mito > 0.8
-    flow = ROS_mito - ROS_cyto;
-else
-    flow = 0;
-end
+function flow = ROS_flow(ROS_mito, ROS_cyto, c_mito, ROS_threshold, fps_upsampled)
+sROS = smoothed_step_function(ROS_mito, ROS_threshold, fps_upsampled); % smoothed step function for ROS
+sCa  = smoothed_step_function(c_mito, 0.8, fps_upsampled); % smoothed step function for c_mito
+s_joint = 1 - (1-sROS)*(1-sCa); % their joint smoothed step function
+
+flow = s_joint * (ROS_mito - ROS_cyto);
 end
