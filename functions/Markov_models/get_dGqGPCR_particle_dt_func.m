@@ -1,8 +1,8 @@
 %% model the dynamics of the percentage of activated Gq-GPCRs
 % alpha1-adrenergic receptors, mGluR5, and D1-D2 heteromers are Gq-coupled
-function dGqGPCR_particle_dt_func = get_dGqGPCR_particle_dt_func(theta, other_settings, NE_func, DA_func, glu_cleft)
+function dGqGPCR_particle_dt_func = get_dGqGPCR_particle_dt_func(theta, other_settings, NE_func, DA_func)
 Hill_coeff = theta('b_cPKC_Gq');
-dGqGPCR_particle_dt_func = @(act_cPKC_particle, GqGPCR_particle, GiGPCR_particle, GsGPCR_particle, t) GqGPCR_particle * ...
+dGqGPCR_particle_dt_func = @(act_cPKC_particle, GqGPCR_particle, GiGPCR_particle, GsGPCR_particle, t, glu_cleft) GqGPCR_particle * ...
     get_transition_matrix(act_cPKC_particle, GiGPCR_particle, GsGPCR_particle, ... 
     t, NE_func, DA_func, glu_cleft, Hill_coeff, theta, other_settings);
 end

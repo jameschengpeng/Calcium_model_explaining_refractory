@@ -149,11 +149,11 @@ c_ER_record = zeros(size(run_seq)); c_ER_record(1) = c_ER;
 c_mito_record = zeros(size(run_seq)); c_mito_record(1) = c_mito;
 IP3_record = zeros(size(run_seq)); IP3_record(1) = IP3;
 if include_ATP
-    ATP_func = get_ATP_func(NE_func, glu_ast, theta);
+    ATP_func = get_ATP_func(NE_func, theta);
 else
-    ATP_func = @(x) 0.01;
+    ATP_func = @(t, glu_ast) 0.01;
 end
-ATP = ATP_func(0);
+ATP = ATP_func(0, glu_ast);
 ATP_record = zeros(size(run_seq)); ATP_record(1) = ATP;
 ROS_mito_record = zeros(size(run_seq)); ROS_mito_record(1) = ROS_mito;
 ROS_cyto_record = zeros(size(run_seq)); ROS_cyto_record(1) = ROS_cyto;
@@ -190,18 +190,54 @@ c_cyto_eff_record = zeros(size(run_seq));
 ATP_eff_record = zeros(size(run_seq));
 IP3_eff_record = zeros(size(run_seq));
 
+%% Pre-create function handles that depend only on constants (theta, VGCC_const, etc.)
+% Glutamate subsystem
+d_glu_neuron_dt_func = get_d_glu_neuron_dt_func(theta, glu_stim_func);
+d_glu_cleft_dt_func = get_d_glu_cleft_dt_func(theta);
+d_glu_ast_dt_func = get_d_glu_ast_dt_func(theta);
+d_glutamine_ast_dt_func = get_d_glutamine_ast_dt_func(theta);
+% Signaling cascade (theta-only)
+dPLC_particle_dt_func = get_dPLC_particle_dt_func(theta);
+dIP3_dt_func = get_dIP3_dt_func(theta);
+d_act_cPKC_particle_dt_func = get_d_act_cPKC_particle_dt_func(theta);
+dDAG_dt_func = get_dDAG_dt_func(theta);
+d_AMPA_particle_dt_func = get_d_AMPA_particle_dt_func(theta);
+dAC_particle_dt_func = get_dAC_particle_dt_func(theta);
+dcAMP_dt_func = get_dcAMP_dt_func(theta);
+dPKA_particle_dt_func = get_dPKA_particle_dt_func(theta);
+dPDE_particle_dt_func = get_dPDE_particle_dt_func(theta);
+% VGCC module
+[m_T_bar_func, h_T_bar_func, tau_h_Tf_func, tau_h_Ts_func, tau_m_T_func, m_L_bar_func, h_L_func, tau_m_L_func] = get_mh_funcs();
+dm_dt_func = get_dm_dt_func();
+dh_dt_func = get_dh_dt_func();
+E_Ca_func = get_E_Ca_func(VGCC_const);
+dV_dt_func = get_dV_dt_func(VGCC_const);
+I_VGCC_func = get_I_VGCC_func();
+I_T_type_func = get_I_T_type_func(VGCC_const);
+I_L_type_func = get_I_L_type_func(VGCC_const);
+% Calcium fluxes (constant)
+Fserca_func = get_Fserca_func(K_serca, other_settings);
+F_leakage_func = get_F_leakage_func();
+F_in_func = get_F_in_func(VGCC_const, theta);
+F_out_func = get_F_out_func(theta);
+Fmito_func = get_Fmito_func(K_fmito, b_mPTP, ROS_threshold);
+Smito_func = get_Smito_func(K_smito);
+% ROS and mito derivatives (constant)
+dROS_mito_dt_func = get_dROS_mito_dt_func(theta, fps_upsampled);
+dROS_cyto_dt_func = get_dROS_cyto_dt_func(theta, cyto_mito_ratio, fps_upsampled);
+dC_mito_dt_func = get_dC_mito_dt_func(theta, cyto_mito_ratio);
+% GPCR subsystem (now constant — time-variant state moved to lambda args)
+dGqGPCR_particle_dt_func = get_dGqGPCR_particle_dt_func(theta, other_settings, NE_func, DA_func);
+dGiGPCR_particle_dt_func = get_dGiGPCR_particle_dt_func(theta, NE_func, NE_spont, DA_func);
+dGsGPCR_particle_dt_func = get_dGsGPCR_particle_dt_func(theta, NE_func, NE_spont, DA_func, DA_spont);
+% FER, dC_cyto, dC_ER (now constant — ROS_cyto moved to lambda args)
+[FER_func, c_cyto_effect_func, ATP_effect_func, IP3_effect_func] = get_FER_func(theta, K_concentration, other_settings);
+dC_cyto_dt_func = get_dC_cyto_dt_func(theta, other_settings, VGCC_const);
+dC_ER_dt_func = get_dC_ER_dt_func(theta, cyto_ER_ratio, other_settings);
+
 for ii = 2:length(NE_seq)
     NE = NE_seq(ii); glu_stim = glu_stim_seq(ii); DA = DA_seq(ii);
     t0 = (ii-2) * dt; % the existing time point
-    %% update on glu_neuron: d_glu_neuron_dt_func = @(glu_neuron, glu_cleft_record, t, fps_upsampled)
-    d_glu_neuron_dt_func = get_d_glu_neuron_dt_func(theta, glu_stim_func);
-    %% update on glu_cleft: d_glu_cleft_dt_func = @(glu_cleft_record, glu_neuron, t, fps_upsampled)
-    d_glu_cleft_dt_func = get_d_glu_cleft_dt_func(theta);
-    %% update on glu_ast: d_glu_ast_dt_func = @(glu_ast, glu_cleft)
-    d_glu_ast_dt_func = get_d_glu_ast_dt_func(theta);
-    %% update on glutamine_ast: d_glutamine_ast_dt_func = @(glu_ast, glutamine_ast)
-    d_glutamine_ast_dt_func = get_d_glutamine_ast_dt_func(theta);
-
     k1_glu_neuron = dt * d_glu_neuron_dt_func(glu_neuron, glu_cleft_record, t0, fps_upsampled);
     k1_glu_cleft = dt * d_glu_cleft_dt_func(glu_cleft_record, glu_cleft, glu_neuron, t0, fps_upsampled);
     k1_glu_ast = dt * d_glu_ast_dt_func(glu_ast, glu_cleft);
@@ -235,71 +271,57 @@ for ii = 2:length(NE_seq)
     % dAC_particle_dt_func = @(PKA_particle, AC_particle, GqGPCR_particle); dcAMP_dt_func = @(cAMP, AC_particle, PDE_particle)
     % dPKA_particle_dt_func = @(PKA_particle, cAMP);
     % dPDE_particle_dt_func = @(PDE_particle, c_cyto); dGsGPCR_particle_dt_func = @(PKA_particle, GsGPCR_particle, t)
-
-    dGqGPCR_particle_dt_func = get_dGqGPCR_particle_dt_func(theta, other_settings, NE_func, DA_func, glu_cleft);
-    dPLC_particle_dt_func = get_dPLC_particle_dt_func(theta);
-    dIP3_dt_func = get_dIP3_dt_func(theta);
-    d_act_cPKC_particle_dt_func = get_d_act_cPKC_particle_dt_func(theta);
-    dDAG_dt_func = get_dDAG_dt_func(theta);
-    d_AMPA_particle_dt_func = get_d_AMPA_particle_dt_func(theta);
-
-    dGiGPCR_particle_dt_func = get_dGiGPCR_particle_dt_func(theta, NE_func, NE_spont, t0, glu_cleft, DA_func);
-    dGsGPCR_particle_dt_func = get_dGsGPCR_particle_dt_func(theta, NE_func, NE_spont, DA_func, DA_spont, t0);
-    dAC_particle_dt_func = get_dAC_particle_dt_func(theta);
-    dcAMP_dt_func = get_dcAMP_dt_func(theta);
-    dPKA_particle_dt_func = get_dPKA_particle_dt_func(theta);
-    dPDE_particle_dt_func = get_dPDE_particle_dt_func(theta);
 %
-    k1_GqGPCR = dt * dGqGPCR_particle_dt_func(act_cPKC_particle, GqGPCR_particle, GiGPCR_particle, GsGPCR_particle, t0);
+    k1_GqGPCR = dt * dGqGPCR_particle_dt_func(act_cPKC_particle, GqGPCR_particle, GiGPCR_particle, GsGPCR_particle, t0, glu_cleft);
     k1_PLC = dt * dPLC_particle_dt_func(act_cPKC_particle, PLC_particle, GqGPCR_particle);
     k1_IP3 = dt * dIP3_dt_func(c_cyto, IP3, PLC_particle);
     k1_cPKC = dt * d_act_cPKC_particle_dt_func(c_cyto, c_cyto_record, DAG, DAG_record, act_cPKC_particle, fps_upsampled, ii);
     k1_DAG = dt * dDAG_dt_func(c_cyto, PLC_particle, DAG);
     k1_AMPA = dt * d_AMPA_particle_dt_func(AMPA_particle, glu_cleft);
 
-    k1_GiGPCR = dt * dGiGPCR_particle_dt_func(GiGPCR_particle, PKA_particle, cAMP, t0);
+    k1_GiGPCR = dt * dGiGPCR_particle_dt_func(GiGPCR_particle, PKA_particle, cAMP, t0, glu_cleft);
     k1_GsGPCR = dt * dGsGPCR_particle_dt_func(PKA_particle, GsGPCR_particle, t0);
     k1_AC = dt * dAC_particle_dt_func(PKA_particle, AC_particle, GsGPCR_particle, GiGPCR_particle);
     k1_cAMP = dt * dcAMP_dt_func(cAMP, AC_particle, PDE_particle);
     k1_PKA = dt * dPKA_particle_dt_func(PKA_particle, cAMP);
     k1_PDE = dt * dPDE_particle_dt_func(PDE_particle, c_cyto);
 %
-    k2_GqGPCR = dt * dGqGPCR_particle_dt_func(act_cPKC_particle+k1_cPKC/2, GqGPCR_particle+k1_GqGPCR/2, GiGPCR_particle+k1_GiGPCR/2, GsGPCR_particle+k1_GsGPCR/2, t0+dt/2);
+    k2_GqGPCR = dt * dGqGPCR_particle_dt_func(act_cPKC_particle+k1_cPKC/2, GqGPCR_particle+k1_GqGPCR/2, GiGPCR_particle+k1_GiGPCR/2, GsGPCR_particle+k1_GsGPCR/2, t0+dt/2, glu_cleft+k1_glu_cleft/2);
     k2_PLC = dt * dPLC_particle_dt_func(act_cPKC_particle+k1_cPKC/2, PLC_particle+k1_PLC/2, GqGPCR_particle+k1_GqGPCR/2);
     k2_IP3 = dt * dIP3_dt_func(c_cyto, IP3 + 1/2*k1_IP3, PLC_particle + 1/2*k1_PLC);
     k2_cPKC = dt * d_act_cPKC_particle_dt_func(c_cyto, c_cyto_record, DAG+k1_DAG/2, DAG_record, act_cPKC_particle+k1_cPKC/2, fps_upsampled, ii);
     k2_DAG = dt * dDAG_dt_func(c_cyto, PLC_particle+k1_PLC/2, DAG+k1_DAG/2);
     k2_AMPA = dt * d_AMPA_particle_dt_func(AMPA_particle+k1_AMPA/2, glu_cleft+k1_glu_cleft/2);
 
-    k2_GiGPCR = dt * dGiGPCR_particle_dt_func(GiGPCR_particle+k1_GiGPCR/2, PKA_particle+k1_PKA/2, cAMP+k1_cAMP/2, t0+dt/2);
+    k2_GiGPCR = dt * dGiGPCR_particle_dt_func(GiGPCR_particle+k1_GiGPCR/2, PKA_particle+k1_PKA/2, cAMP+k1_cAMP/2, t0+dt/2, glu_cleft+k1_glu_cleft/2);
     k2_GsGPCR = dt * dGsGPCR_particle_dt_func(PKA_particle+k1_PKA/2, GsGPCR_particle+k1_GsGPCR/2, t0+dt/2);
     k2_AC = dt * dAC_particle_dt_func(PKA_particle+k1_PKA/2, AC_particle+k1_AC/2, GsGPCR_particle+k1_GsGPCR/2, GiGPCR_particle+k1_GiGPCR/2);
     k2_cAMP = dt * dcAMP_dt_func(cAMP+k1_cAMP/2, AC_particle+k1_AC/2, PDE_particle+k1_PDE/2);
     k2_PKA = dt * dPKA_particle_dt_func(PKA_particle+k1_PKA/2, cAMP+k1_cAMP/2);
     k2_PDE = dt * dPDE_particle_dt_func(PDE_particle+k1_PDE/2, c_cyto);
 %
-    k3_GqGPCR = dt * dGqGPCR_particle_dt_func(act_cPKC_particle+k2_cPKC/2, GqGPCR_particle+k2_GqGPCR/2, GiGPCR_particle+k2_GiGPCR/2, GsGPCR_particle+k2_GsGPCR/2, t0+dt/2);
+    k3_GqGPCR = dt * dGqGPCR_particle_dt_func(act_cPKC_particle+k2_cPKC/2, GqGPCR_particle+k2_GqGPCR/2, GiGPCR_particle+k2_GiGPCR/2, GsGPCR_particle+k2_GsGPCR/2, t0+dt/2, glu_cleft+k2_glu_cleft/2);
     k3_PLC = dt * dPLC_particle_dt_func(act_cPKC_particle+k2_cPKC/2, PLC_particle+k2_PLC/2, GqGPCR_particle+k2_GqGPCR/2);
     k3_IP3 = dt * dIP3_dt_func(c_cyto, IP3 + 1/2*k2_IP3, PLC_particle + 1/2*k2_PLC);
     k3_cPKC = dt * d_act_cPKC_particle_dt_func(c_cyto, c_cyto_record, DAG+k2_DAG/2, DAG_record, act_cPKC_particle+k2_cPKC/2, fps_upsampled, ii);
     k3_DAG = dt * dDAG_dt_func(c_cyto, PLC_particle+k2_PLC/2, DAG+k2_DAG/2);
     k3_AMPA = dt * d_AMPA_particle_dt_func(AMPA_particle+k2_AMPA/2, glu_cleft+k2_glu_cleft/2);
 
-    k3_GiGPCR = dt * dGiGPCR_particle_dt_func(GiGPCR_particle+k2_GiGPCR/2, PKA_particle+k2_PKA/2, cAMP+k2_cAMP/2, t0+dt/2);
+    k3_GiGPCR = dt * dGiGPCR_particle_dt_func(GiGPCR_particle+k2_GiGPCR/2, PKA_particle+k2_PKA/2, cAMP+k2_cAMP/2, t0+dt/2, glu_cleft+k2_glu_cleft/2);
     k3_GsGPCR = dt * dGsGPCR_particle_dt_func(PKA_particle+k2_PKA/2, GsGPCR_particle+k2_GsGPCR/2, t0+dt/2);
     k3_AC = dt * dAC_particle_dt_func(PKA_particle+k2_PKA/2, AC_particle+k2_AC/2, GsGPCR_particle+k2_GsGPCR/2, GiGPCR_particle+k2_GiGPCR/2);
     k3_cAMP = dt * dcAMP_dt_func(cAMP+k2_cAMP/2, AC_particle+k2_AC/2, PDE_particle+k2_PDE/2);
     k3_PKA = dt * dPKA_particle_dt_func(PKA_particle+k2_PKA/2, cAMP+k2_cAMP/2);
     k3_PDE = dt * dPDE_particle_dt_func(PDE_particle+k2_PDE/2, c_cyto);
 %
-    k4_GqGPCR = dt * dGqGPCR_particle_dt_func(act_cPKC_particle+k3_cPKC, GqGPCR_particle+k3_GqGPCR, GiGPCR_particle+k3_GiGPCR, GsGPCR_particle+k3_GsGPCR, t0+dt);
+    k4_GqGPCR = dt * dGqGPCR_particle_dt_func(act_cPKC_particle+k3_cPKC, GqGPCR_particle+k3_GqGPCR, GiGPCR_particle+k3_GiGPCR, GsGPCR_particle+k3_GsGPCR, t0+dt, glu_cleft+k3_glu_cleft);
     k4_PLC = dt * dPLC_particle_dt_func(act_cPKC_particle+k3_cPKC, PLC_particle+k3_PLC, GqGPCR_particle+k3_GqGPCR);
     k4_IP3 = dt * dIP3_dt_func(c_cyto, IP3 + k3_IP3, PLC_particle+k3_PLC);
     k4_cPKC = dt * d_act_cPKC_particle_dt_func(c_cyto, c_cyto_record, DAG+k3_DAG, DAG_record, act_cPKC_particle+k3_cPKC, fps_upsampled, ii);
     k4_DAG = dt * dDAG_dt_func(c_cyto, PLC_particle+k3_PLC, DAG+k3_DAG);
     k4_AMPA = dt * d_AMPA_particle_dt_func(AMPA_particle+k3_AMPA, glu_cleft+k3_glu_cleft);
     
-    k4_GiGPCR = dt * dGiGPCR_particle_dt_func(GiGPCR_particle+k3_GiGPCR, PKA_particle+k3_PKA, cAMP+k3_cAMP, t0+dt);
+    k4_GiGPCR = dt * dGiGPCR_particle_dt_func(GiGPCR_particle+k3_GiGPCR, PKA_particle+k3_PKA, cAMP+k3_cAMP, t0+dt, glu_cleft+k3_glu_cleft);
     k4_GsGPCR = dt * dGsGPCR_particle_dt_func(PKA_particle+k3_PKA, GsGPCR_particle+k3_GsGPCR, t0+dt);
     k4_AC = dt * dAC_particle_dt_func(PKA_particle+k3_PKA, AC_particle+k3_AC, GsGPCR_particle+k3_GsGPCR, GiGPCR_particle+k3_GiGPCR);
     k4_cAMP = dt * dcAMP_dt_func(cAMP+k3_cAMP, AC_particle+k3_AC, PDE_particle+k3_PDE);
@@ -321,26 +343,10 @@ for ii = 2:length(NE_seq)
     PDE_new = PDE_particle + k1_PDE/6 + k2_PDE/3 + k3_PDE/3 + k4_PDE/6;
 
 
-    %% update on ATP, ATP_func = @(t)
-    if include_ATP
-        ATP_func = get_ATP_func(NE_func, glu_ast, theta);
-    else
-        ATP_func = @(x) 0.01;
-    end
-    ATP_new = ATP_func(t0 + dt);
+    %% update on ATP, ATP_func = @(t, glu_ast)
+    ATP_new = ATP_func(t0 + dt, glu_ast_new);
 
-    %% update on the VGCC module
-    % update the tau and steady state values
-    [m_T_bar_func, h_T_bar_func, tau_h_Tf_func, tau_h_Ts_func, tau_m_T_func, m_L_bar_func, h_L_func, tau_m_L_func] = get_mh_funcs();
-    dm_dt_func = get_dm_dt_func(); % dm_dt_func = @(m_bar, m, tau_m)
-    dh_dt_func = get_dh_dt_func(); % dh_dt_func = @(h_bar, h, tau_h)
-    E_Ca_func = get_E_Ca_func(VGCC_const); % E_Ca_func = @(c_cyto)
-    dV_dt_func = get_dV_dt_func(VGCC_const); % dV_dt_func = @(I_VGCC)
-    I_VGCC_func = get_I_VGCC_func(); % I_VGCC_func = @(I_T_type, I_L_type)
-    I_T_type_func = get_I_T_type_func(VGCC_const); % I_T_type_func = @(V, E_Ca, m_T, h_Tf, h_Ts)
-    I_L_type_func = get_I_L_type_func(VGCC_const); % I_L_type_func = @(V, E_Ca, m_L, h_L)
-
-
+    %% VGCC module
     I_T_type1 = I_T_type_func(V, E_Ca, m_T, h_Tf, h_Ts);
     I_L_type1 = I_L_type_func(V, E_Ca, m_L, h_L);
     k1_V = dt * dV_dt_func(I_VGCC_func(I_T_type1, I_L_type1));
@@ -383,65 +389,38 @@ for ii = 2:length(NE_seq)
     I_VGCC = I_VGCC_func(I_T_type1, I_L_type1);
     % update of E_Ca, h_L, I_T_type, I_L_type, I_VGCC are after c_cyto update
 
-    %% update on FER, FER_func = @(c_cyto, c_ER, ATP, IP3, PKA_particle)
-    [FER_func, c_cyto_effect, ATP_effect, IP3_effect] = get_FER_func(theta, K_concentration, ROS_cyto, act_cPKC_particle, other_settings);
-    c_cyto_effect = c_cyto_effect(c_cyto);
-    ATP_effect = ATP_effect(ATP, IP3);
-    FER = FER_func(c_cyto, c_ER, ATP, IP3, PKA_particle);
+    %% update on FER, FER_func = @(c_cyto, c_ER, ATP, IP3, PKA_particle, ROS_cyto)
+    FER = FER_func(c_cyto, c_ER, ATP, IP3, PKA_particle, ROS_cyto);
 
-    %% update on Fserca, Fserca_func = @(c_cyto)
-    Fserca_func = get_Fserca_func(K_serca, other_settings);
     Fserca = Fserca_func(c_cyto, c_ER, init_c_ER);
-
-    %% update on F_leakage, F_leakage_func = @(c_cyto, c_ER)
-    F_leakage_func = get_F_leakage_func();
     F_leakage = F_leakage_func(c_cyto, c_ER);
-
-    %% update on F_in and F_out  F_in_func = @(IP3)    F_out_func = @(c_cyto)
-    F_in_func = get_F_in_func(VGCC_const, theta);
-    F_out_func = get_F_out_func(theta);
     F_in = F_in_func(I_VGCC, PKA_particle, AMPA_particle);
     F_out = F_out_func(c_cyto, act_cPKC_particle);
-
-    %% update on Fmito, Fmito_func = @(c_cyto, c_mito, ROS_mito)
-    Fmito_func = get_Fmito_func(K_fmito, b_mPTP, c_mito, c_cyto, ROS_threshold);
     Fmito = Fmito_func(c_cyto, c_mito, ROS_mito);
-
-    %% update on Smito, Smito_func = @(c_cyto)
-    Smito_func = get_Smito_func(K_smito);
     Smito = Smito_func(c_cyto, c_mito);
-
-    %% update on ROS_mito, ROS_cyto; dROS_cyto_dt_func = @(ROS_mito, ROS_cyto); dROS_mito_dt_func = @(ROS_mito, ROS_cyto, c_mito, glu_ast_record, t)
-    dROS_mito_dt_func = get_dROS_mito_dt_func(theta, fps_upsampled);
-    dROS_cyto_dt_func = get_dROS_cyto_dt_func(theta, cyto_mito_ratio, fps_upsampled);
-
-    %% update on c_cyto, c_ER, and c_mito, dC_cyto_dt_func = @(c_cyto, c_ER, ATP, IP3); dC_ER_dt_func = @(c_cyto, c_ER, ATP, IP3); dC_mito_dt_func = @(c_cyto, c_mito, ROS_mito)
-    dC_cyto_dt_func = get_dC_cyto_dt_func(theta, c_mito, c_cyto, ROS_mito, ROS_cyto, act_cPKC_particle, other_settings, VGCC_const);
-    dC_ER_dt_func = get_dC_ER_dt_func(theta, cyto_ER_ratio, ROS_cyto, act_cPKC_particle, other_settings);
-    dC_mito_dt_func = get_dC_mito_dt_func(theta, cyto_mito_ratio, c_mito, c_cyto);
 
     k1_ROS_mito = dt * dROS_mito_dt_func(ROS_mito, ROS_cyto, c_mito, glu_ast_record, t0);
     k1_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito, ROS_cyto, c_mito);
-    k1_c_cyto = dt * dC_cyto_dt_func(c_cyto, c_ER, ATP_func(t0), IP3, PKA_particle, act_cPKC_particle, I_VGCC, AMPA_particle, init_c_ER);
-    k1_c_ER = dt * dC_ER_dt_func(c_cyto, c_ER, ATP_func(t0), IP3, PKA_particle, init_c_ER);
+    k1_c_cyto = dt * dC_cyto_dt_func(c_cyto, c_ER, ATP_func(t0, glu_ast), IP3, PKA_particle, act_cPKC_particle, I_VGCC, AMPA_particle, init_c_ER, c_mito, ROS_mito, ROS_cyto);
+    k1_c_ER = dt * dC_ER_dt_func(c_cyto, c_ER, ATP_func(t0, glu_ast), IP3, PKA_particle, init_c_ER, ROS_cyto);
     k1_c_mito = dt * dC_mito_dt_func(c_cyto, c_mito, ROS_mito);
 
     k2_ROS_mito = dt * dROS_mito_dt_func(ROS_mito + k1_ROS_mito/2, ROS_cyto + k1_ROS_cyto/2, c_mito + k1_c_mito/2, glu_ast_record, t0+dt/2);
     k2_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito + k1_ROS_mito/2, ROS_cyto + k1_ROS_cyto/2, c_mito + k1_c_mito/2);
-    k2_c_cyto = dt * dC_cyto_dt_func(max(0,c_cyto + k1_c_cyto/2), max(0,c_ER + k1_c_ER/2), ATP_func(t0 + dt/2), IP3+k1_IP3/2, PKA_particle+k1_PKA/2, act_cPKC_particle+k1_cPKC/2, I_VGCC, AMPA_particle+k1_AMPA/2, init_c_ER);
-    k2_c_ER = dt * dC_ER_dt_func(max(0,c_cyto + k1_c_cyto/2), max(0,c_ER + k1_c_ER/2), ATP_func(t0 + dt/2), IP3+k1_IP3/2, PKA_particle+k1_PKA/2, init_c_ER);
+    k2_c_cyto = dt * dC_cyto_dt_func(max(0,c_cyto + k1_c_cyto/2), max(0,c_ER + k1_c_ER/2), ATP_func(t0+dt/2, glu_ast+k1_glu_ast/2), IP3+k1_IP3/2, PKA_particle+k1_PKA/2, act_cPKC_particle+k1_cPKC/2, I_VGCC, AMPA_particle+k1_AMPA/2, init_c_ER, max(0,c_mito+k1_c_mito/2), ROS_mito+k1_ROS_mito/2, ROS_cyto+k1_ROS_cyto/2);
+    k2_c_ER = dt * dC_ER_dt_func(max(0,c_cyto + k1_c_cyto/2), max(0,c_ER + k1_c_ER/2), ATP_func(t0+dt/2, glu_ast+k1_glu_ast/2), IP3+k1_IP3/2, PKA_particle+k1_PKA/2, init_c_ER, ROS_cyto+k1_ROS_cyto/2);
     k2_c_mito = dt * dC_mito_dt_func(max(0,c_cyto+k1_c_cyto/2), max(0,c_mito+k1_c_mito/2), ROS_mito+k1_ROS_mito/2);
 
     k3_ROS_mito = dt * dROS_mito_dt_func(ROS_mito + k2_ROS_mito/2, ROS_cyto + k2_ROS_cyto/2, c_mito + k2_c_mito/2, glu_ast_record, t0+dt/2);
     k3_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito + k2_ROS_mito/2, ROS_cyto + k2_ROS_cyto/2, c_mito + k2_c_mito/2);
-    k3_c_cyto = dt * dC_cyto_dt_func(max(0,c_cyto + k2_c_cyto/2), max(0,c_ER + k2_c_ER/2), ATP_func(t0 + dt/2), IP3+k2_IP3/2, PKA_particle+k2_PKA/2, act_cPKC_particle+k2_cPKC/2, I_VGCC, AMPA_particle+k2_AMPA/2, init_c_ER);
-    k3_c_ER = dt * dC_ER_dt_func(max(0,c_cyto + k2_c_cyto/2), max(0,c_ER + k2_c_ER/2), ATP_func(t0 + dt/2), IP3+k2_IP3/2, PKA_particle+k2_PKA/2, init_c_ER);
+    k3_c_cyto = dt * dC_cyto_dt_func(max(0,c_cyto + k2_c_cyto/2), max(0,c_ER + k2_c_ER/2), ATP_func(t0+dt/2, glu_ast+k2_glu_ast/2), IP3+k2_IP3/2, PKA_particle+k2_PKA/2, act_cPKC_particle+k2_cPKC/2, I_VGCC, AMPA_particle+k2_AMPA/2, init_c_ER, max(0,c_mito+k2_c_mito/2), ROS_mito+k2_ROS_mito/2, ROS_cyto+k2_ROS_cyto/2);
+    k3_c_ER = dt * dC_ER_dt_func(max(0,c_cyto + k2_c_cyto/2), max(0,c_ER + k2_c_ER/2), ATP_func(t0+dt/2, glu_ast+k2_glu_ast/2), IP3+k2_IP3/2, PKA_particle+k2_PKA/2, init_c_ER, ROS_cyto+k2_ROS_cyto/2);
     k3_c_mito = dt * dC_mito_dt_func(max(0,c_cyto+k2_c_cyto/2), max(0,c_mito+k2_c_mito/2), ROS_mito+k2_ROS_mito/2);
 
     k4_ROS_mito = dt * dROS_mito_dt_func(ROS_mito + k3_ROS_mito, ROS_cyto + k3_ROS_cyto, c_mito + k3_c_mito, glu_ast_record, t0+dt);
     k4_ROS_cyto = dt * dROS_cyto_dt_func(ROS_mito + k3_ROS_mito, ROS_cyto + k3_ROS_cyto, c_mito + k3_c_mito);
-    k4_c_cyto = dt * dC_cyto_dt_func(max(0,c_cyto + k3_c_cyto), max(0,c_ER + k3_c_ER), ATP_func(t0 + dt), IP3+k3_IP3, PKA_particle+k3_PKA, act_cPKC_particle+k3_cPKC, I_VGCC, AMPA_particle+k3_AMPA, init_c_ER);
-    k4_c_ER = dt * dC_ER_dt_func(max(0,c_cyto + k3_c_cyto), max(0,c_ER + k3_c_ER), ATP_func(t0 + dt), IP3+k3_IP3, PKA_particle+k3_PKA, init_c_ER);
+    k4_c_cyto = dt * dC_cyto_dt_func(max(0,c_cyto + k3_c_cyto), max(0,c_ER + k3_c_ER), ATP_func(t0+dt, glu_ast+k3_glu_ast), IP3+k3_IP3, PKA_particle+k3_PKA, act_cPKC_particle+k3_cPKC, I_VGCC, AMPA_particle+k3_AMPA, init_c_ER, max(0,c_mito+k3_c_mito), ROS_mito+k3_ROS_mito, ROS_cyto+k3_ROS_cyto);
+    k4_c_ER = dt * dC_ER_dt_func(max(0,c_cyto + k3_c_cyto), max(0,c_ER + k3_c_ER), ATP_func(t0+dt, glu_ast+k3_glu_ast), IP3+k3_IP3, PKA_particle+k3_PKA, init_c_ER, ROS_cyto+k3_ROS_cyto);
     k4_c_mito = dt * dC_mito_dt_func(max(0,c_cyto+k3_c_cyto), max(0,c_mito+k3_c_mito), ROS_mito+k3_ROS_mito);
 
 
@@ -535,9 +514,9 @@ for ii = 2:length(NE_seq)
     Smito_record(ii) = b_Smito * Smito;
     F_in_record(ii) = b_in * F_in;
     F_out_record(ii) = b_out * F_out;
-    c_cyto_eff_record(ii) = c_cyto_effect;
-    ATP_eff_record(ii) = ATP_effect;
-    IP3_eff_record(ii) = IP3_effect(IP3, ATP);
+    c_cyto_eff_record(ii) = c_cyto_effect_func(c_cyto);
+    ATP_eff_record(ii) = ATP_effect_func(ATP, IP3);
+    IP3_eff_record(ii) = IP3_effect_func(IP3, ATP);
 end
 
 

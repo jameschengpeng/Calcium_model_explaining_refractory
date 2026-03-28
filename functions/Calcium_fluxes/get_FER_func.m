@@ -5,7 +5,7 @@
 % calcium and ip3
 % return a function handle for the calcium flux from ER to cytosol, with
 % c_cyto, c_ER, ATP as the variables, and IP3 & n (num of IP3R2) as constants
-function [FER_func, c_cyto_effect, ATP_effect, IP3_effect] = get_FER_func(theta, K_concentration, ROS_cyto, act_cPKC_particle, other_settings)
+function [FER_func, c_cyto_effect, ATP_effect, IP3_effect] = get_FER_func(theta, K_concentration, other_settings)
 IP3R1_percentage = theta('IP3R1_percentage');
 IP3R2_percentage = 1 - IP3R1_percentage;
 %% parameters for IP3R2
@@ -24,7 +24,6 @@ c1_R1 = 0.8194;
 c2_R1 = 0.5942;
 
 %%
-cPKC = mean(act_cPKC_particle(:,2));
 % IP3R2
 c_cyto_effect = @(c_cyto) exp(-(log10(c_cyto) + mu1)^2/(2*sigma1^2));
 ATP_effect = @(ATP, IP3) exp(-(log10(ATP) - mu2 + b1*log10(IP3))^2/(2*sigma2^2));
@@ -33,16 +32,16 @@ IP3_effect = @(IP3, ATP) IP3^2/(IP3^2 + (c1-log10(ATP))^2);
 c_cyto_ATP_effect_R1 = @(c_cyto, ATP) exp(-(log10(c_cyto)-(-b1_R1*log10(ATP)+mu1_R1))^2 / (2 * sigma1_R1^2));
 IP3_effect_R1 = @(IP3) (log10(IP3)+c2_R1)^2 / ((log10(IP3)+c2_R1)^2 + c1_R1^2);
 
-ROS = ROS_cyto;
+K_ROS = theta('K_ROS');
 ROS_basis_effect = 0.7;
-ROS_effect = ROS_basis_effect + (1-ROS_basis_effect) * Hill_func(ROS, 1, theta('K_ROS'));
+ROS_effect_func = @(ROS_cyto) ROS_basis_effect + (1-ROS_basis_effect) * Hill_func(ROS_cyto, 1, K_ROS);
 PKA_effect = @(PKA_particle) 0.4 * Hill_func(mean(PKA_particle(:,2)), 1, theta('K_PKA'));
-FER_func = @(c_cyto, c_ER, ATP, IP3, PKA_particle) ...
-    (IP3R2_percentage * (c_cyto_effect(c_cyto) * IP3_effect(IP3-0.2, ATP) * ATP_effect(ATP, IP3-0.2) * ROS_effect + PKA_effect(PKA_particle)) ...
-    + IP3R1_percentage * (c_cyto_ATP_effect_R1(c_cyto, ATP) * IP3_effect_R1(IP3-0.2) * ROS_effect + PKA_effect(PKA_particle))) * ...
+FER_func = @(c_cyto, c_ER, ATP, IP3, PKA_particle, ROS_cyto) ...
+    (IP3R2_percentage * (c_cyto_effect(c_cyto) * IP3_effect(IP3-0.2, ATP) * ATP_effect(ATP, IP3-0.2) * ROS_effect_func(ROS_cyto) + PKA_effect(PKA_particle)) ...
+    + IP3R1_percentage * (c_cyto_ATP_effect_R1(c_cyto, ATP) * IP3_effect_R1(IP3-0.2) * ROS_effect_func(ROS_cyto) + PKA_effect(PKA_particle))) * ...
     concentration_effect(c_cyto, c_ER, K_concentration);
 if ~other_settings('IP3R2')
-    FER_func = @(c_cyto, c_ER, ATP, IP3) 0;
+    FER_func = @(c_cyto, c_ER, ATP, IP3, PKA_particle, ROS_cyto) 0;
 end
 end
 
